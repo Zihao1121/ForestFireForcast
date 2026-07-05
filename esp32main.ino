@@ -19,16 +19,16 @@ unsigned long lastSendTime = 0;
 const unsigned long sendInterval = 5000; // send every 5 seconds
 
 
-#define DHTPIN 4      // 连接 DHT11 数据引脚的 ESP32 GPIO
-#define DHTTYPE DHT11  // 传感器类型 DHT11
+#define DHTPIN 4      // ESP32 GPIO connected to the DHT11 data pin
+#define DHTTYPE DHT11  // Sensor type: DHT11
 DHT dht(DHTPIN, DHTTYPE);
-String receivedData = "";  // 存储完整的字符串
-bool recording = false;    // 记录是否开始接收数据
+String receivedData = "";  // Store the complete string
+bool recording = false;    // Track whether data reception has started
 
 Adafruit_ADS1115 ads;
-const int windSensorPin = 34; // 选择一个 ADC 输入引脚
-const float voltageRef = 3.3; // ESP32 的参考电压
-const int adcResolution = 4095; // ESP32 ADC 12 位分辨率
+const int windSensorPin = 34; // Select an ADC input pin
+const float voltageRef = 3.3; // ESP32 reference voltage
+const int adcResolution = 4095; // ESP32 ADC 12-bit resolution
 // MQ-135 parameters remain unchanged
 const float RL = 1.0;  // MQ module usually has RL=1kΩ
 const float a_135 = 110.47;
@@ -59,12 +59,12 @@ bool firstDataIgnored = false;
 
 void setup() {
     Serial.begin(115200);
-    SerialBT.begin("ESP32_Master", true); // 作为主机
-    Serial.println("正在搜索 ESP32-CAM...");
+    SerialBT.begin("ESP32_Master", true); // Run as Bluetooth master
+    Serial.println("Searching for ESP32-CAM...");
 
-  // 连接 ESP32-CAM
+  // Connect to ESP32-CAM
     if (!SerialBT.connected()) {
-        Serial.println("⚠️ ESP32-CAM 断开连接，尝试重新连接...");
+        Serial.println("⚠️ ESP32-CAM disconnected. Trying to reconnect...");
         connectToESP32CAM();
     }
 
@@ -78,7 +78,7 @@ void setup() {
 
     ads.setGain(GAIN_ONE);
     Serial.println("Sensor preheating (recommended 30 minutes)...");
-    delay(5000);  // 30 minutes preheating
+    delay(5000);  // Preheating delay; change to 30 minutes if required
 
     // MQ-135 calibration
     float V_ADC_135 = ads.readADC_SingleEnded(0) * (4.096 / 32767.0);
@@ -122,8 +122,8 @@ void setup() {
 void loop() {
     String fireValue="";
     int windadcValue = analogRead(windSensorPin); 
-    float windvoltage = (windadcValue / (float)adcResolution) * voltageRef; // 计算实际电压
-    float windSpeed = windvoltage*1000* 0.027; // 根据手册公式计算风速
+    float windvoltage = (windadcValue / (float)adcResolution) * voltageRef; // Calculate the actual voltage
+    float windSpeed = windvoltage*1000* 0.027; // Calculate wind speed based on the datasheet formula
     Serial.print("wind ADC: ");
     Serial.print(windadcValue);
     Serial.print(" | voltage: ");
@@ -154,8 +154,8 @@ void loop() {
     Serial.print("MQ-7 (CO): "); Serial.print(ppm_7); Serial.println(" ppm");
     Serial.print("MQ-9 (Flammable Gas): "); Serial.print(ppm_9); Serial.println(" ppm");
 
-    float temperature = dht.readTemperature();  // 读取摄氏度
-    float humidity = dht.readHumidity();       // 读取湿度
+    float temperature = dht.readTemperature();  // Read temperature in Celsius
+    float humidity = dht.readHumidity();       // Read humidity
 
     if (!isnan(temperature) && !isnan(humidity)) {
         Serial.print("Temperature: ");
@@ -168,7 +168,7 @@ void loop() {
     } 
 
    
-    while (SerialBT.available()) {  // 只要有数据，就一直读取
+    while (SerialBT.available()) {  // Keep reading while data is available
         while (SerialBT.available()) {
           char c = SerialBT.read();
           receivedData += c;
@@ -179,7 +179,7 @@ void loop() {
         }
       
 
-        // 跳过第一条数据，防止不完整
+        // Skip the first packet to avoid incomplete data
       if (!firstDataIgnored) {
         firstDataIgnored = true;
         receivedData="";
@@ -192,27 +192,27 @@ void loop() {
         String extractedData = receivedData.substring(7, receivedData.length() - 5);
         
 
-            // 解析 Fire 和 NoFire 概率
+            // Parse Fire and No Fire probabilities
 
         int fireIndex = extractedData.indexOf("Fire Probability: ");
         int noFireIndex = extractedData.indexOf("No Fire Probability: ");       
         if (fireIndex != -1 && noFireIndex != -1) {
 
-            int fireStart = fireIndex + 18;  // "Fire Probability: " 长度是18
-            int noFireStart = noFireIndex + 22;  // "No Fire Probability: " 长度是22
+            int fireStart = fireIndex + 18;  // Length of "Fire Probability: " is 18
+            int noFireStart = noFireIndex + 22;  // Length of "No Fire Probability: " is 22
             fireValue = extractedData.substring(fireStart, noFireIndex);
-            fireValue.trim();  // 先获取字符串，再执行 trim()
+            fireValue.trim();  // Get the string first, then trim it
 
             String noFireValue = extractedData.substring(noFireStart);
-            noFireValue.trim();  // 先获取字符串，再执行 trim()
+            noFireValue.trim();  // Get the string first, then trim it
 
-        // 截取数值部分
+        // Extract the numeric value part
 
         Serial.println("Fire: " + fireValue);
         Serial.println("No Fire: " + noFireValue);
         clearBluetoothBuffer();
         receivedData = "";
-        break;  // 解析完一条完整数据后退出 while 循环，执行其他任务
+        break;  // Exit the while loop after parsing one complete packet, then run other tasks
             }
 
         } else {
@@ -247,24 +247,24 @@ void loop() {
 
 void clearBluetoothBuffer() {
     while (SerialBT.available()) {
-        SerialBT.read();  // 读取并丢弃缓冲区中的数据
+        SerialBT.read();  // Read and discard data from the buffer
     }
 }
 void connectToESP32CAM() {
     int maxRetries = 5;
     int retryCount = 0;
 
-    Serial.println("🔍 正在搜索 ESP32-CAM_BT...");
+    Serial.println("🔍 Searching for ESP32-CAM_BT...");
 
     while (!SerialBT.connect("ESP32-CAM_BT") && retryCount < maxRetries) {  
-        Serial.println("⚠️ 连接失败，重试中...");
+        Serial.println("⚠️ Connection failed. Retrying...");
         retryCount++;
-        delay(2000);  // 2 秒后重试
+        delay(2000);  // Retry after 2 seconds
     }
 
     if (SerialBT.connected()) {
-        Serial.println("✅ 已成功连接到 ESP32-CAM!");
+        Serial.println("✅ Successfully connected to ESP32-CAM!");
     } else {
-        Serial.println("❌ 无法连接到 ESP32-CAM, 将继续其他任务...");
+        Serial.println("❌ Unable to connect to ESP32-CAM. Continuing with other tasks...");
     }
 }
