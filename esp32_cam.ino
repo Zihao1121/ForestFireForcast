@@ -132,10 +132,10 @@ void setup()
 {
     // put your setup code here, to run once:
     Serial.begin(115200);
-    SerialBT.begin("ESP32-CAM_BT", false); // 设备名称
+    SerialBT.begin("ESP32-CAM_BT", false); 
     Serial.println("ESP32-CAM Bluetooth open，wait for connection...");
     //comment out the below line to start inference immediately after upload
-    while (!Serial && millis() < 3000);  // 最多等待 3 秒
+    while (!Serial && millis() < 3000);  
 
     Serial.println("Edge Impulse Inferencing Demo");
     if (ei_camera_init() == false) {
@@ -212,8 +212,8 @@ void loop()
 
     // Print the prediction results (classification)
 #else
-    float fire_probability = 0.0;   // 火灾概率
-    float no_fire_probability = 0.0;  // 没有火灾的概率
+    float fire_probability = 0.0;   
+    float no_fire_probability = 0.0;  
     ei_printf("Predictions:\r\n");
     for (uint16_t i = 0; i < EI_CLASSIFIER_LABEL_COUNT; i++) {
         ei_printf("  %s: ", ei_classifier_inferencing_categories[i]);
